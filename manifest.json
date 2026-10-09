@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "giuseppe.server-monitor",
+  "name": "Server Monitor",
+  "version": "1.0.0",
+  "author": "Giuseppe",
+  "license": "MIT",
+  "description": "Controlla se i tuoi server sono raggiungibili e mostra lo stato con un pallino verde o rosso.",
+  "kinds": ["bar-widget"],
+  "entryPoints": { "barWidget": "BarWidget.qml" },
+  "barWidget": {
+    "displayName": "Server Monitor",
+    "description": "Ping (o connessione TCP) verso una lista di server, con stato online/offline.",
+    "category": "Network",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": { "intervalSec": 60, "notify": true },
+    "schema": [
+      { "key": "intervalSec", "type": "integer", "label": "Intervallo di controllo (secondi)", "min": 10, "max": 3600, "step": 10, "defaultValue": 60 },
+      { "key": "notify", "type": "boolean", "label": "Notifica quando un server cambia stato", "defaultValue": true }
+    ]
+  }
+}
