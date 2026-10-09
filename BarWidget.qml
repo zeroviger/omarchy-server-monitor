@@ -13,7 +13,7 @@ import qs.Ui
 // The list lives in ~/.config/omarchy/server-monitor.json.
 Panel {
   id: root
-  moduleName: "giuseppe.server-monitor"
+  moduleName: "mcp64.server-monitor"
   ipcTarget: moduleName
 
   readonly property string home: Quickshell.env("HOME") || ""

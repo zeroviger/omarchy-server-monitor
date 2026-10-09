@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "id": "giuseppe.server-monitor",
+  "id": "mcp64.server-monitor",
   "name": "Server Monitor",
   "version": "1.0.0",
   "author": "Giuseppe Solla (MCP64)",

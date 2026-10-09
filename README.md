@@ -30,16 +30,16 @@ omarchy plugin add https://github.com/GiuseppeSolla/omarchy-server-monitor.git -
 Il widget viene messo nella sezione destra della barra. Per spostarlo:
 
 ```bash
-omarchy bar move giuseppe.server-monitor --section left   # oppure center
+omarchy bar move mcp64.server-monitor --section left   # oppure center
 ```
 
 ### Installazione manuale
 
 ```bash
 git clone https://github.com/GiuseppeSolla/omarchy-server-monitor.git \
-  ~/.config/omarchy/plugins/giuseppe.server-monitor
+  ~/.config/omarchy/plugins/mcp64.server-monitor
 omarchy-shell shell rescanPlugins
-omarchy plugin enable giuseppe.server-monitor
+omarchy plugin enable mcp64.server-monitor
 ```
 
 ## Utilizzo
@@ -75,13 +75,13 @@ Opzioni del widget (in `~/.config/omarchy/shell.json`, nella voce del widget):
 Esempio:
 
 ```json
-{ "id": "giuseppe.server-monitor", "intervalSec": 30, "notify": false }
+{ "id": "mcp64.server-monitor", "intervalSec": 30, "notify": false }
 ```
 
 ## Rimozione
 
 ```bash
-omarchy plugin remove giuseppe.server-monitor
+omarchy plugin remove mcp64.server-monitor
 ```
 
 La lista dei server in `~/.config/omarchy/server-monitor.json` non viene cancellata.
