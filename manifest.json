@@ -3,7 +3,7 @@
   "id": "giuseppe.server-monitor",
   "name": "Server Monitor",
   "version": "1.0.0",
-  "author": "Giuseppe",
+  "author": "Giuseppe Solla (MCP64)",
   "license": "MIT",
   "description": "Controlla se i tuoi server sono raggiungibili e mostra lo stato con un pallino verde o rosso.",
   "kinds": ["bar-widget"],
