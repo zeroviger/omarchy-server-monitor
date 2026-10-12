@@ -14,6 +14,10 @@ A bar widget for Omarchy 4.x that checks whether your servers, websites and doma
 - Popup with the list: status dot, name, address, check type and result (latency, HTTP status or days to expiry).
 - Add, edit, reorder and remove entries directly from the popup.
 - Entries with the same name (case-insensitive) are grouped under one heading, with a summary dot: red if any check in the group has a problem, green if all are ok. Useful to watch a server, its website and its domain together.
+- Status dots:
+  - **green**: ok (reachable, HTTP 2xx/3xx, domain not close to expiry);
+  - **red**: problem (offline, HTTP error, domain expiring or expired);
+  - **grey**: unknown (the registry does not publish the domain expiry); a grey dot that pulses is waiting for its first check.
 - Four kinds of check:
   - **Ping**: ICMP ping to an IP or hostname;
   - **TCP**: connection to a port, useful for servers that block ping;
@@ -56,7 +60,7 @@ The labels in brackets are the Italian ones shown in the widget.
 
 - **Left click** on the icon: open or close the popup.
 - **Middle click**: check all servers now.
-- **Add a server** ("Aggiungi server"): pick the check type (Ping, TCP, Web, Dominio), enter a name ("Nome") and the address (IP or hostname, URL or domain; for TCP also the port, "Porta"), then press Enter or "Aggiungi".
+- **Add a server** ("Aggiungi server"): pick the check type (Ping, TCP, Web, Dominio), enter a name ("Nome") and the address (IP or hostname, URL or domain; for TCP also the port, "Porta"), then press Enter or "Aggiungi". To add another check to an existing group, use the same name.
 - 󰏫 **Edit** ("Modifica"): loads the server into the form below; "Salva" saves it, 󰅖 or Esc cancel.
 - 󰁝 / 󰁅 **Reorder**: move the entry up or down the list. Inside a group the arrows move a check within the group; the arrows on the group heading move the whole group.
 - 󰆴 **Remove** ("Rimuovi"): deletes the server from the list.
@@ -68,12 +72,15 @@ The server list is stored in `~/.config/omarchy/server-monitor.json`:
 
 ```json
 [
-  { "name": "Cloudflare DNS", "type": "ping", "host": "1.1.1.1", "port": 0 },
-  { "name": "Cloudflare HTTPS", "type": "tcp", "host": "1.1.1.1", "port": 443 },
-  { "name": "Website", "type": "http", "host": "https://example.com", "port": 0 },
-  { "name": "example.com", "type": "domain", "host": "example.com", "port": 0 }
+  { "name": "Cloudflare", "type": "ping", "host": "1.1.1.1", "port": 0 },
+  { "name": "Cloudflare", "type": "tcp", "host": "1.1.1.1", "port": 443 },
+  { "name": "example.com", "type": "http", "host": "https://example.com", "port": 0 },
+  { "name": "example.com", "type": "domain", "host": "example.com", "port": 0 },
+  { "name": "NAS", "type": "ping", "host": "192.168.1.250", "port": 0 }
 ]
 ```
+
+Entries with the same `name` form a group: here "Cloudflare" and "example.com" have two checks each, "NAS" is a single entry. When you change the list from the popup the file is saved with the members of each group next to each other.
 
 `type` is `ping`, `tcp`, `http` or `domain`; `port` is used only by `tcp`. Entries without `type`, written by version 1.0, are read as `tcp` when they have a port and `ping` otherwise. You can also edit the file by hand: the popup updates on its own.
 

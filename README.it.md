@@ -12,6 +12,10 @@ Widget per la barra di Omarchy 4.x che controlla se i tuoi server, siti web e do
 - Finestra con la lista: pallino di stato, nome, indirizzo, tipo di controllo e risultato (latenza, codice HTTP o giorni alla scadenza).
 - Aggiunta, modifica, riordino e rimozione direttamente dalla finestra.
 - Le voci con lo stesso nome (senza distinguere maiuscole e minuscole) vengono raggruppate sotto un'unica intestazione, con un pallino riassuntivo: rosso se almeno un controllo del gruppo ha un problema, verde se sono tutti ok. Utile per tenere insieme un server, il suo sito e il suo dominio.
+- Significato dei pallini:
+  - **verde**: tutto ok (raggiungibile, HTTP 2xx/3xx, dominio non vicino alla scadenza);
+  - **rosso**: problema (offline, errore HTTP, dominio in scadenza o scaduto);
+  - **grigio**: stato sconosciuto (il registro non pubblica la scadenza del dominio); un pallino grigio che pulsa è in attesa del primo controllo.
 - Quattro tipi di controllo:
   - **Ping**: ping ICMP verso un IP o un hostname;
   - **TCP**: connessione a una porta, utile per i server che bloccano il ping;
@@ -52,7 +56,7 @@ omarchy plugin enable mcp64.server-monitor
 
 - **Clic sinistro** sull'icona: apre o chiude la finestra.
 - **Clic centrale**: ricontrolla subito tutti i server.
-- **Aggiungi server**: scegli il tipo di controllo (Ping, TCP, Web, Dominio), inserisci nome e indirizzo (IP o hostname, URL o dominio; per TCP anche la porta), poi premi Invio o "Aggiungi".
+- **Aggiungi server**: scegli il tipo di controllo (Ping, TCP, Web, Dominio), inserisci nome e indirizzo (IP o hostname, URL o dominio; per TCP anche la porta), poi premi Invio o "Aggiungi". Per aggiungere un controllo a un gruppo esistente usa lo stesso nome.
 - 󰏫 **Modifica**: carica il server nel modulo in basso; "Salva" lo aggiorna, 󰅖 o Esc annullano.
 - 󰁝 / 󰁅 **Riordina**: sposta la voce su o giù nella lista. Dentro un gruppo le frecce spostano il controllo all'interno del gruppo; quelle sull'intestazione spostano il gruppo intero.
 - 󰆴 **Rimuovi**: toglie il server dalla lista.
@@ -64,12 +68,15 @@ La lista dei server è salvata in `~/.config/omarchy/server-monitor.json`:
 
 ```json
 [
-  { "name": "Cloudflare DNS", "type": "ping", "host": "1.1.1.1", "port": 0 },
-  { "name": "Cloudflare HTTPS", "type": "tcp", "host": "1.1.1.1", "port": 443 },
-  { "name": "Sito web", "type": "http", "host": "https://example.com", "port": 0 },
-  { "name": "example.com", "type": "domain", "host": "example.com", "port": 0 }
+  { "name": "Cloudflare", "type": "ping", "host": "1.1.1.1", "port": 0 },
+  { "name": "Cloudflare", "type": "tcp", "host": "1.1.1.1", "port": 443 },
+  { "name": "example.com", "type": "http", "host": "https://example.com", "port": 0 },
+  { "name": "example.com", "type": "domain", "host": "example.com", "port": 0 },
+  { "name": "NAS", "type": "ping", "host": "192.168.1.250", "port": 0 }
 ]
 ```
+
+Le voci con lo stesso `name` formano un gruppo: qui "Cloudflare" ed "example.com" hanno due controlli ciascuno, "NAS" è una voce singola. Quando modifichi la lista dalla finestra, il file viene salvato con le voci di ogni gruppo una accanto all'altra.
 
 `type` vale `ping`, `tcp`, `http` o `domain`; `port` serve solo per `tcp`. Le voci senza `type`, scritte dalla versione 1.0, vengono lette come `tcp` se hanno una porta e come `ping` altrimenti. Il file si può modificare anche a mano: la finestra si aggiorna da sola.
 
