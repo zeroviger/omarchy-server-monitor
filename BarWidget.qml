@@ -380,7 +380,7 @@ Panel {
     bar: root.bar
     open: root.opened
     focusTarget: focusArea
-    contentWidth: popup.fittedContentWidth(Style.space(520))
+    contentWidth: popup.fittedContentWidth(Style.space(660))
     contentHeight: popup.fittedContentHeight(Math.min(content.implicitHeight, Style.space(600)))
 
     Item {
