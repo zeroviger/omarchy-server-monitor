@@ -94,6 +94,10 @@ Panel {
     return list
   }
 
+  function dotColor(result) {
+    return !result || result.state === 2 ? Color.muted : (result.state === 0 ? okColor : downColor)
+  }
+
   // Worst state in a group: any problem is red, all ok is green, else unknown.
   function groupState(items) {
     var allOk = true
@@ -624,12 +628,11 @@ Panel {
                       Layout.preferredWidth: Style.space(10)
                     }
 
-                    Rectangle {
-                      Layout.preferredWidth: Style.space(10)
-                      Layout.preferredHeight: Style.space(10)
-                      Layout.alignment: Qt.AlignVCenter
+                    component StatusDot: Rectangle {
+                      width: Style.space(10)
+                      height: Style.space(10)
                       radius: width / 2
-                      color: !row.known || row.result.state === 2 ? Color.muted : (row.result.state === 0 ? root.okColor : root.downColor)
+                      color: root.dotColor(row.result)
 
                       SequentialAnimation on opacity {
                         running: root.checking && !row.known
@@ -640,23 +643,42 @@ Panel {
                       }
                     }
 
+                    // Inside a group: the dot sits beside the single line of the check.
+                    StatusDot {
+                      visible: group.grouped
+                      Layout.preferredWidth: width
+                      Layout.preferredHeight: height
+                      Layout.alignment: Qt.AlignVCenter
+                    }
+
                     Column {
                       Layout.fillWidth: true
                       spacing: 0
 
-                      Text {
+                      // Single entry: the dot sits on the name line, the address below the name.
+                      Row {
                         visible: !group.grouped
                         width: parent.width
-                        text: row.server.name
-                        textFormat: Text.PlainText
-                        color: root.foreground
-                        font.family: root.fontFamily
-                        font.pixelSize: Style.font.body
-                        font.bold: true
-                        elide: Text.ElideRight
+                        spacing: Style.space(8)
+
+                        StatusDot {
+                          anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Text {
+                          width: parent.width - Style.space(10) - parent.spacing
+                          text: row.server.name
+                          textFormat: Text.PlainText
+                          color: root.foreground
+                          font.family: root.fontFamily
+                          font.pixelSize: Style.font.body
+                          font.bold: true
+                          elide: Text.ElideRight
+                        }
                       }
                       Text {
                         width: parent.width
+                        leftPadding: group.grouped ? 0 : Style.space(10) + Style.space(8)
                         text: root.subtitleText(row.server, row.result)
                         textFormat: Text.PlainText
                         color: group.grouped ? root.foreground : root.dim
