@@ -13,6 +13,7 @@ A bar widget for Omarchy 4.x that checks whether your servers, websites and doma
 - Bar icon with the number of servers online, e.g. `󰒍 2/3`. When at least one server is offline the icon takes the theme's alert color.
 - Popup with the list: status dot, name, address, check type and result (latency, HTTP status or days to expiry).
 - Add, edit, reorder and remove entries directly from the popup.
+- Entries with the same name (case-insensitive) are grouped under one heading, with a summary dot: red if any check in the group has a problem, green if all are ok. Useful to watch a server, its website and its domain together.
 - Four kinds of check:
   - **Ping**: ICMP ping to an IP or hostname;
   - **TCP**: connection to a port, useful for servers that block ping;
@@ -57,7 +58,7 @@ The labels in brackets are the Italian ones shown in the widget.
 - **Middle click**: check all servers now.
 - **Add a server** ("Aggiungi server"): pick the check type (Ping, TCP, Web, Dominio), enter a name ("Nome") and the address (IP or hostname, URL or domain; for TCP also the port, "Porta"), then press Enter or "Aggiungi".
 - 󰏫 **Edit** ("Modifica"): loads the server into the form below; "Salva" saves it, 󰅖 or Esc cancel.
-- 󰁝 / 󰁅 **Reorder**: move the server up or down the list.
+- 󰁝 / 󰁅 **Reorder**: move the entry up or down the list. Inside a group the arrows move a check within the group; the arrows on the group heading move the whole group.
 - 󰆴 **Remove** ("Rimuovi"): deletes the server from the list.
 - 󰑐 in the header: check all servers now.
 

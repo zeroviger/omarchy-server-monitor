@@ -11,6 +11,7 @@ Widget per la barra di Omarchy 4.x che controlla se i tuoi server, siti web e do
 - Icona nella barra con il conteggio dei server online, ad esempio `󰒍 2/3`. Se almeno un server è offline l'icona prende il colore di avviso del tema.
 - Finestra con la lista: pallino di stato, nome, indirizzo, tipo di controllo e risultato (latenza, codice HTTP o giorni alla scadenza).
 - Aggiunta, modifica, riordino e rimozione direttamente dalla finestra.
+- Le voci con lo stesso nome (senza distinguere maiuscole e minuscole) vengono raggruppate sotto un'unica intestazione, con un pallino riassuntivo: rosso se almeno un controllo del gruppo ha un problema, verde se sono tutti ok. Utile per tenere insieme un server, il suo sito e il suo dominio.
 - Quattro tipi di controllo:
   - **Ping**: ping ICMP verso un IP o un hostname;
   - **TCP**: connessione a una porta, utile per i server che bloccano il ping;
@@ -53,7 +54,7 @@ omarchy plugin enable mcp64.server-monitor
 - **Clic centrale**: ricontrolla subito tutti i server.
 - **Aggiungi server**: scegli il tipo di controllo (Ping, TCP, Web, Dominio), inserisci nome e indirizzo (IP o hostname, URL o dominio; per TCP anche la porta), poi premi Invio o "Aggiungi".
 - 󰏫 **Modifica**: carica il server nel modulo in basso; "Salva" lo aggiorna, 󰅖 o Esc annullano.
-- 󰁝 / 󰁅 **Riordina**: sposta il server su o giù nella lista.
+- 󰁝 / 󰁅 **Riordina**: sposta la voce su o giù nella lista. Dentro un gruppo le frecce spostano il controllo all'interno del gruppo; quelle sull'intestazione spostano il gruppo intero.
 - 󰆴 **Rimuovi**: toglie il server dalla lista.
 - 󰑐 nell'intestazione: controlla subito tutti i server.
 

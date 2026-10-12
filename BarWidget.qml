@@ -68,6 +68,64 @@ Panel {
     return server.type === "tcp" ? server.host + ":" + server.port : server.host
   }
 
+  function groupKey(server) {
+    return String(server.name).trim().toLowerCase()
+  }
+
+  // Entries sharing a name (case-insensitive) form a group; groups keep the
+  // order in which their first entry appears.
+  function groupList(list) {
+    var groups = []
+    var byKey = {}
+    for (var i = 0; i < list.length; i++) {
+      var key = groupKey(list[i])
+      if (byKey[key] === undefined) {
+        byKey[key] = groups.length
+        groups.push({ name: list[i].name, items: [] })
+      }
+      groups[byKey[key]].items.push(list[i])
+    }
+    return groups
+  }
+
+  function flatten(groups) {
+    var list = []
+    for (var i = 0; i < groups.length; i++) list = list.concat(groups[i].items)
+    return list
+  }
+
+  // Worst state in a group: any problem is red, all ok is green, else unknown.
+  function groupState(items) {
+    var allOk = true
+    for (var i = 0; i < items.length; i++) {
+      var s = status[keyOf(items[i].server)]
+      if (s && s.state === 1) return 1
+      if (!s || s.state !== 0) allOk = false
+    }
+    return allOk ? 0 : 2
+  }
+
+  // servers is kept grouped (members of a group are contiguous), so each
+  // group maps to a run of indices in it.
+  readonly property var groups: {
+    var list = groupList(servers)
+    var index = 0
+    return list.map(function(group) {
+      return {
+        name: group.name,
+        items: group.items.map(function(server) { return { server: server, index: index++ } })
+      }
+    })
+  }
+
+  // Replace the list, regroup it, keep the entry being edited and save.
+  function setServers(next) {
+    var editing = editingIndex >= 0 ? servers[editingIndex] : null
+    servers = flatten(groupList(next))
+    editingIndex = editing ? servers.indexOf(editing) : -1
+    saveServers()
+  }
+
   function countWhere(state) {
     var n = 0
     for (var i = 0; i < servers.length; i++) {
@@ -152,7 +210,7 @@ Panel {
     } catch (e) {
       errorMessage = "server-monitor.json non valido: " + e
     }
-    servers = list
+    servers = flatten(groupList(list))
     if (editingIndex >= list.length) cancelEdit()
     check()
   }
@@ -213,9 +271,8 @@ Panel {
     var next = servers.slice()
     if (editingIndex >= 0) next[editingIndex] = entry
     else next.push(entry)
-    servers = next
-    saveServers()
     cancelEdit()
+    setServers(next)
     check()
   }
 
@@ -239,25 +296,32 @@ Panel {
     portField.text = ""
   }
 
-  function moveServer(index, delta) {
+  function swap(list, index, delta) {
     var target = index + delta
-    if (target < 0 || target >= servers.length) return
-    var next = servers.slice()
-    var moved = next.splice(index, 1)[0]
-    next.splice(target, 0, moved)
-    if (editingIndex === index) editingIndex = target
-    else if (editingIndex === target) editingIndex = index
-    servers = next
-    saveServers()
+    if (target < 0 || target >= list.length) return false
+    var moved = list[index]
+    list[index] = list[target]
+    list[target] = moved
+    return true
+  }
+
+  // Move a whole group up or down past its neighbour.
+  function moveGroup(groupIndex, delta) {
+    var list = groupList(servers)
+    if (swap(list, groupIndex, delta)) setServers(flatten(list))
+  }
+
+  // Move one entry up or down inside its group.
+  function moveWithinGroup(groupIndex, itemIndex, delta) {
+    var list = groupList(servers)
+    if (swap(list[groupIndex].items, itemIndex, delta)) setServers(flatten(list))
   }
 
   function removeServer(index) {
     var next = servers.slice()
     next.splice(index, 1)
     if (index === editingIndex) cancelEdit()
-    else if (index < editingIndex) editingIndex--
-    servers = next
-    saveServers()
+    setServers(next)
   }
 
   // ---- checks --------------------------------------------------------------
@@ -466,14 +530,14 @@ Panel {
             }
 
             Repeater {
-              model: root.servers
+              model: root.groups
 
               Column {
-                id: row
+                id: group
                 required property var modelData
                 required property int index
-                readonly property var result: root.status[root.keyOf(modelData)]
-                readonly property bool known: result !== undefined
+                readonly property bool grouped: modelData.items.length > 1
+                readonly property int state: root.groupState(modelData.items)
                 width: serverList.width
                 spacing: Style.space(4)
 
@@ -483,91 +547,163 @@ Panel {
                   color: Util.alpha(root.foreground, 0.2)
                 }
 
+                // Group header, only when several checks share the name.
                 RowLayout {
+                  visible: group.grouped
                   width: parent.width
                   spacing: Style.space(8)
 
                   Rectangle {
-                    id: dot
                     Layout.preferredWidth: Style.space(10)
                     Layout.preferredHeight: Style.space(10)
                     Layout.alignment: Qt.AlignVCenter
                     radius: width / 2
-                    color: !row.known || row.result.state === 2 ? Color.muted : (row.result.state === 0 ? root.okColor : root.downColor)
-
-                    SequentialAnimation on opacity {
-                      running: root.checking && !row.known
-                      loops: Animation.Infinite
-                      alwaysRunToEnd: true
-                      NumberAnimation { to: 0.3; duration: 500 }
-                      NumberAnimation { to: 1.0; duration: 500 }
-                    }
-                  }
-
-                  Column {
-                    Layout.fillWidth: true
-                    spacing: 0
-
-                    Text {
-                      width: parent.width
-                      text: row.modelData.name
-                      textFormat: Text.PlainText
-                      color: root.foreground
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.body
-                      font.bold: true
-                      elide: Text.ElideRight
-                    }
-                    Text {
-                      width: parent.width
-                      text: root.subtitleText(row.modelData, row.result)
-                      textFormat: Text.PlainText
-                      color: root.dim
-                      font.family: root.fontFamily
-                      font.pixelSize: Style.font.caption
-                      elide: Text.ElideRight
-                    }
+                    color: group.state === 2 ? Color.muted : (group.state === 0 ? root.okColor : root.downColor)
                   }
 
                   Text {
-                    text: root.resultText(row.modelData, row.result)
+                    Layout.fillWidth: true
+                    text: group.modelData.name
                     textFormat: Text.PlainText
-                    color: !row.known || row.result.state === 2 ? root.dim : (row.result.state === 0 ? root.foreground : root.downColor)
+                    color: root.foreground
+                    font.family: root.fontFamily
+                    font.pixelSize: Style.font.body
+                    font.bold: true
+                    elide: Text.ElideRight
+                  }
+
+                  Text {
+                    text: group.modelData.items.length + " controlli"
+                    textFormat: Text.PlainText
+                    color: root.dim
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.bodySmall
                   }
 
                   Button {
                     iconText: "󰁝"
-                    tooltipText: "Sposta su"
+                    tooltipText: "Sposta il gruppo su"
                     focusable: true
-                    enabled: row.index > 0
+                    enabled: group.index > 0
                     opacity: enabled ? 1 : 0.3
-                    onClicked: root.moveServer(row.index, -1)
+                    onClicked: root.moveGroup(group.index, -1)
                   }
 
                   Button {
                     iconText: "󰁅"
-                    tooltipText: "Sposta giù"
+                    tooltipText: "Sposta il gruppo giù"
                     focusable: true
-                    enabled: row.index < root.servers.length - 1
+                    enabled: group.index < root.groups.length - 1
                     opacity: enabled ? 1 : 0.3
-                    onClicked: root.moveServer(row.index, 1)
+                    onClicked: root.moveGroup(group.index, 1)
                   }
 
-                  Button {
-                    iconText: "󰏫"
-                    tooltipText: "Modifica"
-                    focusable: true
-                    selected: root.editingIndex === row.index
-                    onClicked: root.editingIndex === row.index ? root.cancelEdit() : root.editServer(row.index)
-                  }
+                  // Invisible spacers so the arrows line up with the rows below.
+                  Button { iconText: "󰏫"; enabled: false; opacity: 0 }
+                  Button { iconText: "󰆴"; enabled: false; opacity: 0 }
+                }
 
-                  Button {
-                    iconText: "󰆴"
-                    tooltipText: "Rimuovi"
-                    focusable: true
-                    onClicked: root.removeServer(row.index)
+                Repeater {
+                  model: group.modelData.items
+
+                  RowLayout {
+                    id: row
+                    required property var modelData
+                    required property int index
+                    readonly property var server: modelData.server
+                    readonly property int serverIndex: modelData.index
+                    readonly property var result: root.status[root.keyOf(server)]
+                    readonly property bool known: result !== undefined
+                    width: group.width
+                    spacing: Style.space(8)
+
+                    Item {
+                      visible: group.grouped
+                      Layout.preferredWidth: Style.space(10)
+                    }
+
+                    Rectangle {
+                      Layout.preferredWidth: Style.space(10)
+                      Layout.preferredHeight: Style.space(10)
+                      Layout.alignment: Qt.AlignVCenter
+                      radius: width / 2
+                      color: !row.known || row.result.state === 2 ? Color.muted : (row.result.state === 0 ? root.okColor : root.downColor)
+
+                      SequentialAnimation on opacity {
+                        running: root.checking && !row.known
+                        loops: Animation.Infinite
+                        alwaysRunToEnd: true
+                        NumberAnimation { to: 0.3; duration: 500 }
+                        NumberAnimation { to: 1.0; duration: 500 }
+                      }
+                    }
+
+                    Column {
+                      Layout.fillWidth: true
+                      spacing: 0
+
+                      Text {
+                        visible: !group.grouped
+                        width: parent.width
+                        text: row.server.name
+                        textFormat: Text.PlainText
+                        color: root.foreground
+                        font.family: root.fontFamily
+                        font.pixelSize: Style.font.body
+                        font.bold: true
+                        elide: Text.ElideRight
+                      }
+                      Text {
+                        width: parent.width
+                        text: root.subtitleText(row.server, row.result)
+                        textFormat: Text.PlainText
+                        color: group.grouped ? root.foreground : root.dim
+                        font.family: root.fontFamily
+                        font.pixelSize: group.grouped ? Style.font.bodySmall : Style.font.caption
+                        elide: Text.ElideRight
+                      }
+                    }
+
+                    Text {
+                      text: root.resultText(row.server, row.result)
+                      textFormat: Text.PlainText
+                      color: !row.known || row.result.state === 2 ? root.dim : (row.result.state === 0 ? root.foreground : root.downColor)
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.bodySmall
+                    }
+
+                    Button {
+                      iconText: "󰁝"
+                      tooltipText: "Sposta su"
+                      focusable: true
+                      enabled: group.grouped ? row.index > 0 : group.index > 0
+                      opacity: enabled ? 1 : 0.3
+                      onClicked: group.grouped ? root.moveWithinGroup(group.index, row.index, -1) : root.moveGroup(group.index, -1)
+                    }
+
+                    Button {
+                      iconText: "󰁅"
+                      tooltipText: "Sposta giù"
+                      focusable: true
+                      enabled: group.grouped ? row.index < group.modelData.items.length - 1 : group.index < root.groups.length - 1
+                      opacity: enabled ? 1 : 0.3
+                      onClicked: group.grouped ? root.moveWithinGroup(group.index, row.index, 1) : root.moveGroup(group.index, 1)
+                    }
+
+                    Button {
+                      iconText: "󰏫"
+                      tooltipText: "Modifica"
+                      focusable: true
+                      selected: root.editingIndex === row.serverIndex
+                      onClicked: root.editingIndex === row.serverIndex ? root.cancelEdit() : root.editServer(row.serverIndex)
+                    }
+
+                    Button {
+                      iconText: "󰆴"
+                      tooltipText: "Rimuovi"
+                      focusable: true
+                      onClicked: root.removeServer(row.serverIndex)
+                    }
                   }
                 }
               }
