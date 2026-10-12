@@ -8,8 +8,8 @@ import qs.Commons
 import qs.Ui
 
 // Server Monitor: checks a user-defined list of servers and shows each one
-// with a green (online) or red (offline) dot. Servers without a port are
-// checked with ICMP ping; servers with a port with a TCP connect.
+// with a green (ok) or red (down) dot. Each entry has a type: ICMP ping, TCP
+// connect, web (HTTP/HTTPS status) or domain (registration expiry).
 // The list lives in ~/.config/omarchy/server-monitor.json.
 Panel {
   id: root
@@ -20,13 +20,28 @@ Panel {
   readonly property string storePath: home + "/.config/omarchy/server-monitor.json"
   readonly property int intervalSec: Math.max(10, Number(setting("intervalSec", 60)) || 60)
   readonly property bool notifyChanges: setting("notify", true) === true
+  readonly property int domainWarnDays: Math.max(0, Number(setting("domainWarnDays", 30)) || 0)
+  // Registration expiry changes rarely and registries rate-limit lookups,
+  // so domains are rechecked every 6 hours unless a check is forced.
+  readonly property int domainRecheckMs: 6 * 3600 * 1000
 
-  // [{ name, host, port }]
+  readonly property var typeOptions: [
+    { value: "ping", label: "Ping" },
+    { value: "tcp", label: "TCP" },
+    { value: "http", label: "Web" },
+    { value: "domain", label: "Dominio" }
+  ]
+  readonly property var typeLabels: ({ ping: "ping", tcp: "TCP", http: "web", domain: "dominio" })
+
+  // [{ name, type, host, port }]
   property var servers: []
-  // key -> { up: bool, ms: number }
+  // key -> { state: 0 ok | 1 down | 2 unknown, value: number, detail: string, at: ms }
   property var status: ({})
+  // Type selected in the add/edit form.
+  property string formType: "ping"
   property bool checking: false
   property bool checkPending: false
+  property bool checkForced: false
   property string errorMessage: ""
   // Index of the server being edited in the form, -1 when adding a new one.
   property int editingIndex: -1
@@ -39,23 +54,52 @@ Panel {
   readonly property color dim: Qt.darker(foreground, 1.45)
   readonly property string fontFamily: bar ? bar.fontFamily : Style.font.family
 
-  readonly property int onlineCount: countWhere(true)
-  readonly property int offlineCount: countWhere(false)
+  readonly property int onlineCount: countWhere(0)
+  readonly property int offlineCount: countWhere(1)
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
   function keyOf(server) {
-    return server.host + (server.port ? ":" + server.port : "")
+    return server.type + "|" + server.host + "|" + (server.port || 0)
   }
 
-  function countWhere(up) {
+  function addressOf(server) {
+    return server.type === "tcp" ? server.host + ":" + server.port : server.host
+  }
+
+  function countWhere(state) {
     var n = 0
     for (var i = 0; i < servers.length; i++) {
       var s = status[keyOf(servers[i])]
-      if (s && s.up === up) n++
+      if (s && s.state === state) n++
     }
     return n
+  }
+
+  // Text shown on the right of a row.
+  function resultText(server, result) {
+    if (!result) return "…"
+    if (server.type === "domain") {
+      if (result.state === 2) return "n/d"
+      if (result.value < 0) return "scaduto"
+      return result.value + " gg"
+    }
+    if (server.type === "http") {
+      if (result.detail === "000") return "offline"
+      return result.state === 0 ? result.detail + " · " + result.value + " ms" : "HTTP " + result.detail
+    }
+    return result.state === 0 ? Math.round(result.value) + " ms" : "offline"
+  }
+
+  // Second line of a row: address, check type and, for domains, the expiry date.
+  function subtitleText(server, result) {
+    var text = addressOf(server) + "  (" + typeLabels[server.type]
+    if (server.type === "domain") {
+      if (result && result.detail) text += ", scade il " + result.detail.split("-").reverse().join("/")
+      else if (result && result.state === 2) text += ", scadenza non pubblicata"
+    }
+    return text + ")"
   }
 
   // ---- theme ---------------------------------------------------------------
@@ -99,7 +143,10 @@ Panel {
         for (var i = 0; i < parsed.length; i++) {
           var s = parsed[i]
           if (!s || typeof s.host !== "string" || s.host === "") continue
-          list.push({ name: String(s.name || s.host), host: s.host, port: s.port ? Number(s.port) : 0 })
+          var port = s.port ? Number(s.port) : 0
+          // Entries saved before types existed: a port meant TCP.
+          var type = typeLabels[s.type] !== undefined ? s.type : (port ? "tcp" : "ping")
+          list.push({ name: String(s.name || s.host), type: type, host: s.host, port: type === "tcp" ? port : 0 })
         }
       }
     } catch (e) {
@@ -126,26 +173,40 @@ Panel {
   }
 
   function saveServer() {
+    var type = formType
     var name = nameField.text.trim()
     var host = hostField.text.trim()
     var portText = portField.text.trim()
-    errorMessage = ""
-    if (!/^[A-Za-z0-9._:\-\[\]]+$/.test(host)) {
-      errorMessage = "Inserisci un IP o un hostname valido."
-      return
-    }
     var port = 0
-    if (portText !== "") {
-      port = Number(portText)
-      if (!/^\d+$/.test(portText) || port < 1 || port > 65535) {
-        errorMessage = "La porta deve essere un numero tra 1 e 65535."
+    errorMessage = ""
+    if (type === "http") {
+      if (!/^(https?:\/\/)?[A-Za-z0-9.\-]+(:\d{1,5})?(\/\S*)?$/i.test(host)) {
+        errorMessage = "Inserisci un indirizzo web valido, ad esempio https://example.com."
         return
       }
+    } else if (type === "domain") {
+      host = host.toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/[\/:].*$/, "")
+      if (!/^([a-z0-9-]+\.)+[a-z0-9-]{2,}$/.test(host)) {
+        errorMessage = "Inserisci un dominio valido, ad esempio example.com."
+        return
+      }
+    } else {
+      if (!/^[A-Za-z0-9._:\-\[\]]+$/.test(host)) {
+        errorMessage = "Inserisci un IP o un hostname valido."
+        return
+      }
+      if (type === "tcp") {
+        port = Number(portText)
+        if (!/^\d+$/.test(portText) || port < 1 || port > 65535) {
+          errorMessage = "La porta deve essere un numero tra 1 e 65535."
+          return
+        }
+      }
     }
-    var entry = { name: name || host, host: host, port: port }
+    var entry = { name: name || host, type: type, host: host, port: port }
     for (var i = 0; i < servers.length; i++) {
       if (i !== editingIndex && keyOf(servers[i]) === keyOf(entry)) {
-        errorMessage = keyOf(entry) + " è già nella lista."
+        errorMessage = addressOf(entry) + " (" + typeLabels[type] + ") è già nella lista."
         return
       }
     }
@@ -163,6 +224,7 @@ Panel {
     if (!server) return
     errorMessage = ""
     editingIndex = index
+    formType = server.type
     nameField.text = server.name
     hostField.text = server.host
     portField.text = server.port ? String(server.port) : ""
@@ -171,6 +233,7 @@ Panel {
 
   function cancelEdit() {
     editingIndex = -1
+    formType = "ping"
     nameField.text = ""
     hostField.text = ""
     portField.text = ""
@@ -201,12 +264,18 @@ Panel {
 
   readonly property string checkScript: String(Qt.resolvedUrl("check.sh")).replace(/^file:\/\//, "")
 
-  function check() {
-    if (checking) { checkPending = true; return }
+  // force: also recheck domains whose expiry was looked up recently.
+  function check(force) {
+    if (checking) { checkPending = true; checkForced = checkForced || force === true; return }
     if (servers.length === 0) { status = ({}); return }
-    var args = ["bash", checkScript]
-    for (var i = 0; i < servers.length; i++)
-      args.push(String(i), servers[i].host, String(servers[i].port || 0))
+    var args = ["bash", checkScript, String(domainWarnDays)]
+    var now = Date.now()
+    for (var i = 0; i < servers.length; i++) {
+      var server = servers[i]
+      var known = status[keyOf(server)]
+      if (server.type === "domain" && force !== true && known && now - known.at < domainRecheckMs) continue
+      args.push(String(i), server.type, server.host, String(server.port || 0))
+    }
     checkProc.snapshot = servers.slice()
     checkProc.command = args
     checking = true
@@ -216,36 +285,51 @@ Panel {
   function finishCheck(output) {
     var list = checkProc.snapshot
     var next = {}
+    // Keep results for entries this run skipped (recently checked domains).
+    for (var k = 0; k < list.length; k++) {
+      var kept = status[keyOf(list[k])]
+      if (kept) next[keyOf(list[k])] = kept
+    }
+    var fresh = {}
     var lines = String(output || "").split("\n")
     for (var i = 0; i < lines.length; i++) {
       var parts = lines[i].split("\t")
-      if (parts.length < 3) continue
+      if (parts.length < 4) continue
       var server = list[Number(parts[0])]
       if (!server) continue
-      next[keyOf(server)] = { up: parts[1] === "0", ms: Number(parts[2]) || 0 }
+      var key = keyOf(server)
+      next[key] = { state: Number(parts[1]), value: Number(parts[2]) || 0, detail: parts[3], at: Date.now() }
+      fresh[key] = true
     }
     if (notifyChanges) {
       for (var j = 0; j < list.length; j++) {
-        var key = keyOf(list[j])
-        var before = status[key]
-        var after = next[key]
-        if (before && after && before.up !== after.up)
-          notify(list[j], after.up)
+        var jkey = keyOf(list[j])
+        var before = status[jkey]
+        var after = next[jkey]
+        if (fresh[jkey] && before && after && before.state !== after.state && before.state !== 2 && after.state !== 2)
+          notify(list[j], after)
       }
     }
     status = next
     checking = false
     if (checkPending) {
+      var forced = checkForced
       checkPending = false
-      Qt.callLater(root.check)
+      checkForced = false
+      Qt.callLater(function() { root.check(forced) })
     }
   }
 
-  function notify(server, up) {
+  function notify(server, result) {
+    var ok = result.state === 0
+    var title
+    if (server.type === "domain")
+      title = ok ? server.name + ": dominio rinnovato"
+        : server.name + (result.value < 0 ? ": dominio scaduto" : ": il dominio scade tra " + result.value + " giorni")
+    else
+      title = server.name + (ok ? " è tornato online" : " è offline")
     Quickshell.execDetached(["notify-send", "-a", "Server Monitor",
-      "-u", up ? "normal" : "critical",
-      server.name + (up ? " è tornato online" : " è offline"),
-      keyOf(server)])
+      "-u", ok ? "normal" : "critical", title, addressOf(server)])
   }
 
   onOpenedChanged: {
@@ -282,7 +366,7 @@ Panel {
       ? "Server Monitor: nessun server"
       : root.onlineCount + " online, " + root.offlineCount + " offline"
     onPressed: function(mouseButton) {
-      if (mouseButton === Qt.MiddleButton) root.check()
+      if (mouseButton === Qt.MiddleButton) root.check(true)
       else root.toggle()
     }
   }
@@ -345,7 +429,7 @@ Panel {
             tooltipText: "Controlla ora"
             focusable: true
             iconSpinning: root.checking
-            onClicked: root.check()
+            onClicked: root.check(true)
           }
         }
 
@@ -409,7 +493,7 @@ Panel {
                     Layout.preferredHeight: Style.space(10)
                     Layout.alignment: Qt.AlignVCenter
                     radius: width / 2
-                    color: !row.known ? Color.muted : (row.result.up ? root.okColor : root.downColor)
+                    color: !row.known || row.result.state === 2 ? Color.muted : (row.result.state === 0 ? root.okColor : root.downColor)
 
                     SequentialAnimation on opacity {
                       running: root.checking && !row.known
@@ -436,7 +520,7 @@ Panel {
                     }
                     Text {
                       width: parent.width
-                      text: root.keyOf(row.modelData) + (row.modelData.port ? "  (TCP)" : "  (ping)")
+                      text: root.subtitleText(row.modelData, row.result)
                       textFormat: Text.PlainText
                       color: root.dim
                       font.family: root.fontFamily
@@ -446,9 +530,9 @@ Panel {
                   }
 
                   Text {
-                    text: !row.known ? "…" : (row.result.up ? Math.round(row.result.ms) + " ms" : "offline")
+                    text: root.resultText(row.modelData, row.result)
                     textFormat: Text.PlainText
-                    color: !row.known ? root.dim : (row.result.up ? root.foreground : root.downColor)
+                    color: !row.known || row.result.state === 2 ? root.dim : (row.result.state === 0 ? root.foreground : root.downColor)
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.bodySmall
                   }
@@ -496,6 +580,13 @@ Panel {
           foreground: root.foreground
         }
 
+        ButtonGroup {
+          options: root.typeOptions
+          value: root.formType
+          fontSize: Style.font.bodySmall
+          onChanged: function(value) { root.formType = value }
+        }
+
         RowLayout {
           width: parent.width
           spacing: Style.space(6)
@@ -512,11 +603,13 @@ Panel {
             Layout.fillWidth: true
             Layout.minimumWidth: Style.space(130)
             Layout.preferredWidth: Style.space(140)
-            placeholderText: "IP o hostname"
+            placeholderText: root.formType === "http" ? "URL"
+              : root.formType === "domain" ? "Dominio" : "IP o hostname"
             onAccepted: root.saveServer()
           }
           TextField {
             id: portField
+            visible: root.formType === "tcp"
             Layout.preferredWidth: Style.space(70)
             placeholderText: "Porta"
             inputMethodHints: Qt.ImhDigitsOnly
@@ -539,7 +632,13 @@ Panel {
 
         Text {
           width: parent.width
-          text: "Senza porta: ping ICMP. Con porta: connessione TCP (utile se il server blocca il ping)."
+          text: ({
+            ping: "Ping ICMP verso l'IP o l'hostname.",
+            tcp: "Connessione TCP alla porta indicata: utile se il server blocca il ping.",
+            http: "Verde se l'indirizzo risponde con un codice 2xx o 3xx. Senza http:// o https:// usa HTTPS.",
+            domain: "Scadenza della registrazione (RDAP/whois), ricontrollata ogni 6 ore. Rosso se mancano meno di "
+              + root.domainWarnDays + " giorni. Grigio se il registro non pubblica la scadenza."
+          })[root.formType]
           textFormat: Text.PlainText
           color: root.dim
           font.family: root.fontFamily
