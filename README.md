@@ -87,7 +87,7 @@ Widget options (in `~/.config/omarchy/shell.json`, on the widget's entry):
 Example:
 
 ```json
-{ "id": "mcp64.server-monitor", "intervalSec": 30, "notify": false }
+{ "id": "mcp64.server-monitor", "intervalSec": 30, "notify": false, "domainWarnDays": 15 }
 ```
 
 ## Remove
