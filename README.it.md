@@ -29,7 +29,7 @@ Widget per la barra di Omarchy 4.x che controlla se i tuoi server, siti web e do
 
 - Omarchy 4.x con Omarchy Shell (Quickshell).
 - `bash`, `ping` (iputils), `timeout` (coreutils), `curl`, `jq` e `notify-send` (libnotify), già presenti in Omarchy.
-- Facoltativo: `whois`, usato per la scadenza dei domini quando il registro non ha un servizio RDAP (ad esempio `.it`). Se manca, installalo con `omarchy pkg add whois`.
+- Facoltativo: `whois`, usato per la scadenza dei domini quando il registro non ha un servizio RDAP (ad esempio `.it`). Se manca, installa il pacchetto `whois`; senza, quei domini mostrano "n/d".
 
 ## Installazione
 
@@ -41,15 +41,6 @@ Il widget viene messo nella sezione destra della barra. Per spostarlo:
 
 ```bash
 omarchy bar move mcp64.server-monitor --section left   # oppure center
-```
-
-### Installazione manuale
-
-```bash
-git clone https://github.com/zeroviger/omarchy-server-monitor.git \
-  ~/.config/omarchy/plugins/mcp64.server-monitor
-omarchy-shell shell rescanPlugins
-omarchy plugin enable mcp64.server-monitor
 ```
 
 ## Utilizzo

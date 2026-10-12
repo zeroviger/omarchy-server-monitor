@@ -31,7 +31,7 @@ A bar widget for Omarchy 4.x that checks whether your servers, websites and doma
 
 - Omarchy 4.x with Omarchy Shell (Quickshell).
 - `bash`, `ping` (iputils), `timeout` (coreutils), `curl`, `jq` and `notify-send` (libnotify), all of which ship with Omarchy.
-- Optional: `whois`, used for domain expiry when a registry has no RDAP service (e.g. `.it`). Install it with `omarchy pkg add whois` if it is missing.
+- Optional: `whois`, used for domain expiry when a registry has no RDAP service (e.g. `.it`). If it is missing, install the `whois` package; without it, those domains show "n/d".
 
 ## Install
 
@@ -43,15 +43,6 @@ The widget is placed in the right section of the bar. To move it:
 
 ```bash
 omarchy bar move mcp64.server-monitor --section left   # or center
-```
-
-### Manual install
-
-```bash
-git clone https://github.com/zeroviger/omarchy-server-monitor.git \
-  ~/.config/omarchy/plugins/mcp64.server-monitor
-omarchy-shell shell rescanPlugins
-omarchy plugin enable mcp64.server-monitor
 ```
 
 ## Usage
