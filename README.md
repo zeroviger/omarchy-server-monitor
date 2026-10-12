@@ -36,7 +36,7 @@ A bar widget for Omarchy 4.x that checks whether your servers, websites and doma
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/GiuseppeSolla/omarchy-server-monitor.git --enable
+omarchy plugin add https://github.com/zeroviger/omarchy-server-monitor.git --enable
 ```
 
 The widget is placed in the right section of the bar. To move it:
@@ -48,7 +48,7 @@ omarchy bar move mcp64.server-monitor --section left   # or center
 ### Manual install
 
 ```bash
-git clone https://github.com/GiuseppeSolla/omarchy-server-monitor.git \
+git clone https://github.com/zeroviger/omarchy-server-monitor.git \
   ~/.config/omarchy/plugins/mcp64.server-monitor
 omarchy-shell shell rescanPlugins
 omarchy plugin enable mcp64.server-monitor
