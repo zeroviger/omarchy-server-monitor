@@ -539,7 +539,7 @@ Panel {
                 readonly property bool grouped: modelData.items.length > 1
                 readonly property int state: root.groupState(modelData.items)
                 width: serverList.width
-                spacing: Style.space(4)
+                spacing: grouped ? Style.space(1) : Style.space(4)
 
                 Rectangle {
                   width: parent.width
@@ -581,6 +581,7 @@ Panel {
                   }
 
                   Button {
+                    verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                     iconText: "󰁝"
                     tooltipText: "Sposta il gruppo su"
                     focusable: true
@@ -590,6 +591,7 @@ Panel {
                   }
 
                   Button {
+                    verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                     iconText: "󰁅"
                     tooltipText: "Sposta il gruppo giù"
                     focusable: true
@@ -599,8 +601,8 @@ Panel {
                   }
 
                   // Invisible spacers so the arrows line up with the rows below.
-                  Button { iconText: "󰏫"; enabled: false; opacity: 0 }
-                  Button { iconText: "󰆴"; enabled: false; opacity: 0 }
+                  Button { iconText: "󰏫"; enabled: false; opacity: 0; verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY }
+                  Button { iconText: "󰆴"; enabled: false; opacity: 0; verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY }
                 }
 
                 Repeater {
@@ -673,6 +675,7 @@ Panel {
                     }
 
                     Button {
+                      verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰁝"
                       tooltipText: "Sposta su"
                       focusable: true
@@ -682,6 +685,7 @@ Panel {
                     }
 
                     Button {
+                      verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰁅"
                       tooltipText: "Sposta giù"
                       focusable: true
@@ -691,6 +695,7 @@ Panel {
                     }
 
                     Button {
+                      verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰏫"
                       tooltipText: "Modifica"
                       focusable: true
@@ -699,6 +704,7 @@ Panel {
                     }
 
                     Button {
+                      verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰆴"
                       tooltipText: "Rimuovi"
                       focusable: true
