@@ -78,6 +78,7 @@ Opzioni del widget (in `~/.config/omarchy/shell.json`, nella voce del widget):
 | `intervalSec` | `60`    | Intervallo tra un controllo e l'altro, in secondi (10–3600) |
 | `notify`      | `true`  | Notifica quando un server cambia stato         |
 | `domainWarnDays` | `30` | Il dominio diventa rosso quando alla scadenza mancano meno di questi giorni (0–365) |
+| `language`    | `auto`  | `auto` (lingua del sistema), `en`, `it` o `tr`; le lingue di sistema non supportate usano l'inglese |
 
 Esempio:
 

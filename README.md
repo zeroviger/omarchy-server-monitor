@@ -6,7 +6,7 @@ A bar widget for Omarchy 4.x that checks whether your servers, websites and doma
 
 ![Server Monitor](preview.png)
 
-> The widget's interface is in Italian.
+> The interface is available in English, Italian and Turkish (see the `language` option).
 
 ## Features
 
@@ -47,7 +47,7 @@ omarchy bar move mcp64.server-monitor --section left   # or center
 
 ## Usage
 
-The labels in brackets are the Italian ones shown in the widget.
+The labels in brackets are the Italian ones; the widget shows them in your language.
 
 - **Left click** on the icon: open or close the popup.
 - **Middle click**: check all servers now.
@@ -82,6 +82,7 @@ Widget options (in `~/.config/omarchy/shell.json`, on the widget's entry):
 | `intervalSec` | `60`    | Seconds between checks (10–3600)               |
 | `notify`      | `true`  | Notify when a server changes state             |
 | `domainWarnDays` | `30` | A domain turns red when its registration expires in fewer than this many days (0–365) |
+| `language`    | `auto`  | `auto` (system language), `en`, `it` or `tr`; unsupported system languages fall back to English |
 
 Example:
 

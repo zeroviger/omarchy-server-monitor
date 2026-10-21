@@ -21,7 +21,8 @@
     "defaults": {
       "intervalSec": 60,
       "notify": true,
-      "domainWarnDays": 30
+      "domainWarnDays": 30,
+      "language": "auto"
     },
     "schema": [
       {
@@ -47,6 +48,13 @@
         "max": 365,
         "step": 1,
         "defaultValue": 30
+      },
+      {
+        "key": "language",
+        "type": "enum",
+        "label": "Lingua / Language / Dil",
+        "options": ["auto", "en", "it", "tr"],
+        "defaultValue": "auto"
       }
     ]
   }
