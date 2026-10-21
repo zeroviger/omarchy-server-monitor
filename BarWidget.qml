@@ -21,6 +21,14 @@ Panel {
   readonly property int intervalSec: Math.max(10, Number(setting("intervalSec", 60)) || 60)
   readonly property bool notifyChanges: setting("notify", true) === true
   readonly property int domainWarnDays: Math.max(0, Number(setting("domainWarnDays", 30)) || 0)
+  // "auto" follows the system locale; otherwise one of the keys of `strings`.
+  readonly property string language: {
+    var wanted = String(setting("language", "auto"))
+    if (strings[wanted] !== undefined) return wanted
+    var locale = Quickshell.env("LC_ALL") || Quickshell.env("LC_MESSAGES") || Quickshell.env("LANG") || Qt.locale().name
+    var code = String(locale).slice(0, 2).toLowerCase()
+    return strings[code] !== undefined ? code : "en"
+  }
   // Registration expiry changes rarely and registries rate-limit lookups,
   // so domains are rechecked every 6 hours unless a check is forced.
   readonly property int domainRecheckMs: 6 * 3600 * 1000
@@ -29,9 +37,96 @@ Panel {
     { value: "ping", label: "Ping" },
     { value: "tcp", label: "TCP" },
     { value: "http", label: "Web" },
-    { value: "domain", label: "Dominio" }
+    { value: "domain", label: tr("typeDomain") }
   ]
-  readonly property var typeLabels: ({ ping: "ping", tcp: "TCP", http: "web", domain: "dominio" })
+  readonly property var typeLabels: ({ ping: "ping", tcp: "TCP", http: tr("typeWebLower"), domain: tr("typeDomainLower") })
+
+  // User-visible text, one table per language. English is the fallback for
+  // missing keys. %1, %2 are replaced by the arguments of tr().
+  readonly property var strings: ({
+    en: {
+      typeDomain: "Domain", typeDomainLower: "domain", typeWebLower: "web",
+      none: "n/a", expired: "expired", days: "%1 d", offline: "offline",
+      expiresOn: ", expires on %1", expiryUnpublished: ", expiry not published",
+      invalidFile: "Invalid server-monitor.json: %1",
+      badUrl: "Enter a valid web address, e.g. https://example.com.",
+      badDomain: "Enter a valid domain, e.g. example.com.",
+      badHost: "Enter a valid IP or hostname.",
+      badPort: "The port must be a number between 1 and 65535.",
+      duplicate: "%1 (%2) is already in the list.",
+      domainRenewed: "%1: domain renewed", domainExpired: "%1: domain expired",
+      domainExpiring: "%1: domain expires in %2 days",
+      backOnline: "%1 is back online", isOffline: "%1 is offline",
+      noServers: "Server Monitor: no servers", tooltipCounts: "%1 online, %2 offline",
+      online: "online", offlineLabel: "offline", checkNow: "Check now", emptyList: "No servers. Add one below.",
+      checksCount: "%1 checks", moveGroupUp: "Move group up", moveGroupDown: "Move group down",
+      moveUp: "Move up", moveDown: "Move down", edit: "Edit", remove: "Remove",
+      editHeader: "EDIT SERVER", addHeader: "ADD SERVER",
+      name: "Name", url: "URL", domainField: "Domain", hostField: "IP or hostname", port: "Port",
+      save: "Save", add: "Add", cancel: "Cancel",
+      hintPing: "ICMP ping to the IP or hostname.",
+      hintTcp: "TCP connection to the given port: useful if the server blocks ping.",
+      hintHttp: "Green if the address answers with a 2xx or 3xx code. Without http:// or https:// it uses HTTPS.",
+      hintDomain: "Registration expiry (RDAP/whois), rechecked every 6 hours. Red if fewer than %1 days are left. Grey if the registry does not publish the expiry."
+    },
+    it: {
+      typeDomain: "Dominio", typeDomainLower: "dominio", typeWebLower: "web",
+      none: "n/d", expired: "scaduto", days: "%1 gg", offline: "offline",
+      expiresOn: ", scade il %1", expiryUnpublished: ", scadenza non pubblicata",
+      invalidFile: "server-monitor.json non valido: %1",
+      badUrl: "Inserisci un indirizzo web valido, ad esempio https://example.com.",
+      badDomain: "Inserisci un dominio valido, ad esempio example.com.",
+      badHost: "Inserisci un IP o un hostname valido.",
+      badPort: "La porta deve essere un numero tra 1 e 65535.",
+      duplicate: "%1 (%2) è già nella lista.",
+      domainRenewed: "%1: dominio rinnovato", domainExpired: "%1: dominio scaduto",
+      domainExpiring: "%1: il dominio scade tra %2 giorni",
+      backOnline: "%1 è tornato online", isOffline: "%1 è offline",
+      noServers: "Server Monitor: nessun server", tooltipCounts: "%1 online, %2 offline",
+      online: "online", offlineLabel: "offline", checkNow: "Controlla ora", emptyList: "Nessun server. Aggiungine uno qui sotto.",
+      checksCount: "%1 controlli", moveGroupUp: "Sposta il gruppo su", moveGroupDown: "Sposta il gruppo giù",
+      moveUp: "Sposta su", moveDown: "Sposta giù", edit: "Modifica", remove: "Rimuovi",
+      editHeader: "MODIFICA SERVER", addHeader: "AGGIUNGI SERVER",
+      name: "Nome", url: "URL", domainField: "Dominio", hostField: "IP o hostname", port: "Porta",
+      save: "Salva", add: "Aggiungi", cancel: "Annulla",
+      hintPing: "Ping ICMP verso l'IP o l'hostname.",
+      hintTcp: "Connessione TCP alla porta indicata: utile se il server blocca il ping.",
+      hintHttp: "Verde se l'indirizzo risponde con un codice 2xx o 3xx. Senza http:// o https:// usa HTTPS.",
+      hintDomain: "Scadenza della registrazione (RDAP/whois), ricontrollata ogni 6 ore. Rosso se mancano meno di %1 giorni. Grigio se il registro non pubblica la scadenza."
+    },
+    tr: {
+      typeDomain: "Alan adı", typeDomainLower: "alan adı", typeWebLower: "web",
+      none: "yok", expired: "süresi doldu", days: "%1 gün", offline: "çevrimdışı",
+      expiresOn: ", bitiş: %1", expiryUnpublished: ", bitiş tarihi yayımlanmıyor",
+      invalidFile: "Geçersiz server-monitor.json: %1",
+      badUrl: "Geçerli bir web adresi girin, örneğin https://example.com.",
+      badDomain: "Geçerli bir alan adı girin, örneğin example.com.",
+      badHost: "Geçerli bir IP veya ana makine adı girin.",
+      badPort: "Port 1 ile 65535 arasında bir sayı olmalı.",
+      duplicate: "%1 (%2) zaten listede.",
+      domainRenewed: "%1: alan adı yenilendi", domainExpired: "%1: alan adının süresi doldu",
+      domainExpiring: "%1: alan adının süresi %2 gün içinde doluyor",
+      backOnline: "%1 yeniden çevrimiçi", isOffline: "%1 çevrimdışı",
+      noServers: "Server Monitor: sunucu yok", tooltipCounts: "%1 çevrimiçi, %2 çevrimdışı",
+      online: "çevrimiçi", offlineLabel: "çevrimdışı", checkNow: "Şimdi kontrol et", emptyList: "Sunucu yok. Aşağıdan bir tane ekleyin.",
+      checksCount: "%1 kontrol", moveGroupUp: "Grubu yukarı taşı", moveGroupDown: "Grubu aşağı taşı",
+      moveUp: "Yukarı taşı", moveDown: "Aşağı taşı", edit: "Düzenle", remove: "Kaldır",
+      editHeader: "SUNUCUYU DÜZENLE", addHeader: "SUNUCU EKLE",
+      name: "Ad", url: "URL", domainField: "Alan adı", hostField: "IP veya ana makine adı", port: "Port",
+      save: "Kaydet", add: "Ekle", cancel: "İptal",
+      hintPing: "IP veya ana makine adına ICMP ping.",
+      hintTcp: "Belirtilen porta TCP bağlantısı: sunucu ping'i engelliyorsa kullanışlıdır.",
+      hintHttp: "Adres 2xx veya 3xx koduyla yanıt verirse yeşil. http:// veya https:// yoksa HTTPS kullanılır.",
+      hintDomain: "Kayıt bitiş tarihi (RDAP/whois), 6 saatte bir yeniden kontrol edilir. %1 günden az kaldıysa kırmızı. Kayıt kuruluşu bitiş tarihini yayımlamıyorsa gri."
+    }
+  })
+
+  function tr(key) {
+    var table = strings[language] || strings.en
+    var text = table[key] !== undefined ? table[key] : strings.en[key]
+    for (var i = 1; i < arguments.length; i++) text = text.replace("%" + i, arguments[i])
+    return text
+  }
 
   // [{ name, type, host, port }]
   property var servers: []
@@ -143,23 +238,23 @@ Panel {
   function resultText(server, result) {
     if (!result) return "…"
     if (server.type === "domain") {
-      if (result.state === 2) return "n/d"
-      if (result.value < 0) return "scaduto"
-      return result.value + " gg"
+      if (result.state === 2) return tr("none")
+      if (result.value < 0) return tr("expired")
+      return tr("days", result.value)
     }
     if (server.type === "http") {
-      if (result.detail === "000") return "offline"
+      if (result.detail === "000") return tr("offline")
       return result.state === 0 ? result.detail + " · " + result.value + " ms" : "HTTP " + result.detail
     }
-    return result.state === 0 ? Math.round(result.value) + " ms" : "offline"
+    return result.state === 0 ? Math.round(result.value) + " ms" : tr("offline")
   }
 
   // Second line of a row: address, check type and, for domains, the expiry date.
   function subtitleText(server, result) {
     var text = addressOf(server) + "  (" + typeLabels[server.type]
     if (server.type === "domain") {
-      if (result && result.detail) text += ", scade il " + result.detail.split("-").reverse().join("/")
-      else if (result && result.state === 2) text += ", scadenza non pubblicata"
+      if (result && result.detail) text += tr("expiresOn", result.detail.split("-").reverse().join("/"))
+      else if (result && result.state === 2) text += tr("expiryUnpublished")
     }
     return text + ")"
   }
@@ -212,7 +307,7 @@ Panel {
         }
       }
     } catch (e) {
-      errorMessage = "server-monitor.json non valido: " + e
+      errorMessage = tr("invalidFile", e)
     }
     servers = flatten(groupList(list))
     if (editingIndex >= list.length) cancelEdit()
@@ -243,24 +338,24 @@ Panel {
     errorMessage = ""
     if (type === "http") {
       if (!/^(https?:\/\/)?[A-Za-z0-9.\-]+(:\d{1,5})?(\/\S*)?$/i.test(host)) {
-        errorMessage = "Inserisci un indirizzo web valido, ad esempio https://example.com."
+        errorMessage = tr("badUrl")
         return
       }
     } else if (type === "domain") {
       host = host.toLowerCase().replace(/^[a-z]+:\/\//, "").replace(/[\/:].*$/, "")
       if (!/^([a-z0-9-]+\.)+[a-z0-9-]{2,}$/.test(host)) {
-        errorMessage = "Inserisci un dominio valido, ad esempio example.com."
+        errorMessage = tr("badDomain")
         return
       }
     } else {
       if (!/^[A-Za-z0-9._:\-\[\]]+$/.test(host)) {
-        errorMessage = "Inserisci un IP o un hostname valido."
+        errorMessage = tr("badHost")
         return
       }
       if (type === "tcp") {
         port = Number(portText)
         if (!/^\d+$/.test(portText) || port < 1 || port > 65535) {
-          errorMessage = "La porta deve essere un numero tra 1 e 65535."
+          errorMessage = tr("badPort")
           return
         }
       }
@@ -268,7 +363,7 @@ Panel {
     var entry = { name: name || host, type: type, host: host, port: port }
     for (var i = 0; i < servers.length; i++) {
       if (i !== editingIndex && keyOf(servers[i]) === keyOf(entry)) {
-        errorMessage = addressOf(entry) + " (" + typeLabels[type] + ") è già nella lista."
+        errorMessage = tr("duplicate", addressOf(entry), typeLabels[type])
         return
       }
     }
@@ -392,10 +487,11 @@ Panel {
     var ok = result.state === 0
     var title
     if (server.type === "domain")
-      title = ok ? server.name + ": dominio rinnovato"
-        : server.name + (result.value < 0 ? ": dominio scaduto" : ": il dominio scade tra " + result.value + " giorni")
+      title = ok ? tr("domainRenewed", server.name)
+        : result.value < 0 ? tr("domainExpired", server.name)
+        : tr("domainExpiring", server.name, result.value)
     else
-      title = server.name + (ok ? " è tornato online" : " è offline")
+      title = tr(ok ? "backOnline" : "isOffline", server.name)
     Quickshell.execDetached(["notify-send", "-a", "Server Monitor",
       "-u", ok ? "normal" : "critical", title, addressOf(server)])
   }
@@ -431,8 +527,8 @@ Panel {
       : "󰒍 " + root.onlineCount + "/" + root.servers.length
     active: root.offlineCount > 0
     tooltipText: root.servers.length === 0
-      ? "Server Monitor: nessun server"
-      : root.onlineCount + " online, " + root.offlineCount + " offline"
+      ? tr("noServers")
+      : root.tr("tooltipCounts", root.onlineCount, root.offlineCount)
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.MiddleButton) root.check(true)
       else root.toggle()
@@ -485,7 +581,7 @@ Panel {
 
           Text {
             visible: root.servers.length > 0
-            text: root.onlineCount + " online · " + root.offlineCount + " offline"
+            text: root.onlineCount + " " + root.tr("online") + " · " + root.offlineCount + " " + root.tr("offlineLabel")
             textFormat: Text.PlainText
             color: root.dim
             font.family: root.fontFamily
@@ -494,7 +590,7 @@ Panel {
 
           Button {
             iconText: "󰑐"
-            tooltipText: "Controlla ora"
+            tooltipText: root.tr("checkNow")
             focusable: true
             iconSpinning: root.checking
             onClicked: root.check(true)
@@ -526,7 +622,7 @@ Panel {
 
             Text {
               visible: root.servers.length === 0
-              text: "Nessun server. Aggiungine uno qui sotto."
+              text: root.tr("emptyList")
               textFormat: Text.PlainText
               color: root.dim
               font.family: root.fontFamily
@@ -577,7 +673,7 @@ Panel {
                   }
 
                   Text {
-                    text: group.modelData.items.length + " controlli"
+                    text: root.tr("checksCount", group.modelData.items.length)
                     textFormat: Text.PlainText
                     color: root.dim
                     font.family: root.fontFamily
@@ -587,7 +683,7 @@ Panel {
                   Button {
                     verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                     iconText: "󰁝"
-                    tooltipText: "Sposta il gruppo su"
+                    tooltipText: root.tr("moveGroupUp")
                     focusable: true
                     enabled: group.index > 0
                     opacity: enabled ? 1 : 0.3
@@ -597,7 +693,7 @@ Panel {
                   Button {
                     verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                     iconText: "󰁅"
-                    tooltipText: "Sposta il gruppo giù"
+                    tooltipText: root.tr("moveGroupDown")
                     focusable: true
                     enabled: group.index < root.groups.length - 1
                     opacity: enabled ? 1 : 0.3
@@ -699,7 +795,7 @@ Panel {
                     Button {
                       verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰁝"
-                      tooltipText: "Sposta su"
+                      tooltipText: root.tr("moveUp")
                       focusable: true
                       enabled: group.grouped ? row.index > 0 : group.index > 0
                       opacity: enabled ? 1 : 0.3
@@ -709,7 +805,7 @@ Panel {
                     Button {
                       verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰁅"
-                      tooltipText: "Sposta giù"
+                      tooltipText: root.tr("moveDown")
                       focusable: true
                       enabled: group.grouped ? row.index < group.modelData.items.length - 1 : group.index < root.groups.length - 1
                       opacity: enabled ? 1 : 0.3
@@ -719,7 +815,7 @@ Panel {
                     Button {
                       verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰏫"
-                      tooltipText: "Modifica"
+                      tooltipText: root.tr("edit")
                       focusable: true
                       selected: root.editingIndex === row.serverIndex
                       onClicked: root.editingIndex === row.serverIndex ? root.cancelEdit() : root.editServer(row.serverIndex)
@@ -728,7 +824,7 @@ Panel {
                     Button {
                       verticalPadding: group.grouped ? Style.space(2) : Style.spacing.controlPaddingY
                       iconText: "󰆴"
-                      tooltipText: "Rimuovi"
+                      tooltipText: root.tr("remove")
                       focusable: true
                       onClicked: root.removeServer(row.serverIndex)
                     }
@@ -740,7 +836,7 @@ Panel {
         }
 
         PanelSectionHeader {
-          text: root.editingIndex >= 0 ? "MODIFICA SERVER" : "AGGIUNGI SERVER"
+          text: root.tr(root.editingIndex >= 0 ? "editHeader" : "addHeader")
           foreground: root.foreground
         }
 
@@ -759,7 +855,7 @@ Panel {
             id: nameField
             Layout.fillWidth: true
             Layout.preferredWidth: Style.space(170)
-            placeholderText: "Nome"
+            placeholderText: root.tr("name")
             onAccepted: hostField.forceActiveFocus()
           }
           TextField {
@@ -767,20 +863,20 @@ Panel {
             Layout.fillWidth: true
             Layout.minimumWidth: Style.space(130)
             Layout.preferredWidth: Style.space(140)
-            placeholderText: root.formType === "http" ? "URL"
-              : root.formType === "domain" ? "Dominio" : "IP o hostname"
+            placeholderText: root.tr(root.formType === "http" ? "url"
+              : root.formType === "domain" ? "domainField" : "hostField")
             onAccepted: root.saveServer()
           }
           TextField {
             id: portField
             visible: root.formType === "tcp"
             Layout.preferredWidth: Style.space(70)
-            placeholderText: "Porta"
+            placeholderText: root.tr("port")
             inputMethodHints: Qt.ImhDigitsOnly
             onAccepted: root.saveServer()
           }
           Button {
-            text: root.editingIndex >= 0 ? "Salva" : "Aggiungi"
+            text: root.tr(root.editingIndex >= 0 ? "save" : "add")
             focusable: true
             enabled: hostField.text.trim() !== ""
             onClicked: root.saveServer()
@@ -788,7 +884,7 @@ Panel {
           Button {
             visible: root.editingIndex >= 0
             iconText: "󰅖"
-            tooltipText: "Annulla"
+            tooltipText: root.tr("cancel")
             focusable: true
             onClicked: root.cancelEdit()
           }
@@ -796,13 +892,8 @@ Panel {
 
         Text {
           width: parent.width
-          text: ({
-            ping: "Ping ICMP verso l'IP o l'hostname.",
-            tcp: "Connessione TCP alla porta indicata: utile se il server blocca il ping.",
-            http: "Verde se l'indirizzo risponde con un codice 2xx o 3xx. Senza http:// o https:// usa HTTPS.",
-            domain: "Scadenza della registrazione (RDAP/whois), ricontrollata ogni 6 ore. Rosso se mancano meno di "
-              + root.domainWarnDays + " giorni. Grigio se il registro non pubblica la scadenza."
-          })[root.formType]
+          text: root.formType === "domain" ? root.tr("hintDomain", root.domainWarnDays)
+            : root.tr(({ ping: "hintPing", tcp: "hintTcp", http: "hintHttp" })[root.formType])
           textFormat: Text.PlainText
           color: root.dim
           font.family: root.fontFamily
